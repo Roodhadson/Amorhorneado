@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Amorhorneado</string>
+    <string name="greeting_name">Android</string>
+    <string name="hello_x">Hello %1$s!</string>
+    <string name="ingredients_title">Ingredientes</string>
+    <string name="ingredient_name_label">Nombre del ingrediente</string>
+    <string name="cost_price_label">Precio de Costo</string>
+    <string name="sale_price_label">Precio de Venta</string>
+    <string name="unit_label">Unidad (kg, unidades)</string>
+    <string name="add_ingredient">Agregar Ingrediente</string>
+    <string name="cost_label">Costo: %1$.2f</string>
+    <string name="sale_label">Venta: %1$.2f</string>
+</resources>
