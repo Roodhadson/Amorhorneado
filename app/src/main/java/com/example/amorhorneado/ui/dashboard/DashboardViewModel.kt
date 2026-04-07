@@ -179,9 +179,25 @@ class DashboardViewModel(private val repository: IngredientRepository) : ViewMod
                 val currentInProd = production.find { it.recipeId == recipe.id }?.quantity ?: 0
                 currentInProd <= recipe.minStock
             },
-            productionData = production.mapNotNull { prod ->
+            productionData = production.filter { it.quantity > 0 || it.portionQuantity > 0 }.mapNotNull { prod ->
                 recipes.find { it.id == prod.recipeId }?.let { recipe ->
-                    ProductionItem(recipe.title, prod.quantity, recipe.imagePath)
+                    val quantityText = if (recipe.isPortionEnabled) {
+                        if (prod.quantity > 0 && prod.portionQuantity > 0) {
+                            "x${prod.quantity} + x${prod.portionQuantity}P"
+                        } else if (prod.portionQuantity > 0) {
+                            "x${prod.portionQuantity}P"
+                        } else {
+                            "x${prod.quantity}"
+                        }
+                    } else {
+                        "x${prod.quantity}"
+                    }
+                    ProductionItem(
+                        title = recipe.title,
+                        quantity = prod.quantity,
+                        quantityDisplay = quantityText,
+                        imagePath = recipe.imagePath
+                    )
                 }
             }
         )
@@ -223,4 +239,10 @@ data class DashboardUiState(
 )
 
 data class TopProduct(val id: Int, val title: String, val totalSold: Int, val imagePath: String?, val price: Double)
-data class ProductionItem(val title: String, val quantity: Int, val imagePath: String?)
+data class ProductionItem(
+    val title: String,
+    val quantity: Int,
+    val portionQuantity: Int = 0,
+    val quantityDisplay: String = "",
+    val imagePath: String?
+)

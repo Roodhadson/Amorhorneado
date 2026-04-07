@@ -275,7 +275,7 @@ fun DashboardScreen(
                             Spacer(Modifier.width(12.dp))
                             Text(text = info.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
-                        Text(text = "x${info.quantity}", color = BakeryOrange, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
+                        Text(text = info.quantityDisplay, color = BakeryOrange, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
                     }
                 }
             }

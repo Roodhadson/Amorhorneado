@@ -3,6 +3,7 @@ package com.example.amorhorneado.ui.ingredients
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -106,6 +107,41 @@ fun AddIngredientScreen(
                 onValueChange = { viewModel.updateUiState(uiState.ingredientDetails.copy(name = it)) },
                 placeholder = "Ej. Harina de Trigo"
             )
+
+            // Purchase Format (Packaging)
+            var showPackagingDialog by remember { mutableStateOf(false) }
+            Card(
+                modifier = Modifier.fillMaxWidth().clickable { showPackagingDialog = true },
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, BakeryOrange.copy(alpha = 0.3f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Inventory, contentDescription = null, tint = BakeryOrange)
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text("Formato de Compra (Cajas/Sacos)", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("Toca para calcular por unidades/kilos", color = Color.Gray, fontSize = 12.sp)
+                    }
+                }
+            }
+
+            if (showPackagingDialog) {
+                PackagingCalculatorDialog(
+                    onDismiss = { showPackagingDialog = false },
+                    onConfirm = { totalUnits, totalPrice ->
+                        val unitPrice = totalPrice / totalUnits
+                        viewModel.updateUiState(uiState.ingredientDetails.copy(
+                            costPrice = String.format(Locale.US, "%.4f", unitPrice),
+                            stock = totalUnits.toString()
+                        ))
+                        showPackagingDialog = false
+                    }
+                )
+            }
 
             // Unit Selector
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -285,4 +321,82 @@ fun AddIngredientScreen(
             }
         }
     }
+}
+
+@Composable
+fun PackagingCalculatorDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (Double, Double) -> Unit
+) {
+    var numPackages by remember { mutableStateOf("") }
+    var unitsPerPackage by remember { mutableStateOf("") }
+    var totalPrice by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Calculadora de Empaque", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = numPackages,
+                    onValueChange = { numPackages = it },
+                    label = { Text("Cantidad de Bultos/Cajas") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = unitsPerPackage,
+                    onValueChange = { unitsPerPackage = it },
+                    label = { Text("Unidades/Kilos por Bulto") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = totalPrice,
+                    onValueChange = { totalPrice = it },
+                    label = { Text("Precio Total Pagado ($)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                val nP = numPackages.toDoubleOrNull() ?: 0.0
+                val uP = unitsPerPackage.toDoubleOrNull() ?: 0.0
+                val totalUnits = nP * uP
+                val tP = totalPrice.toDoubleOrNull() ?: 0.0
+                val unitPrice = if (totalUnits > 0) tP / totalUnits else 0.0
+
+                if (totalUnits > 0) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = BakeryOrange.copy(alpha = 0.1f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            Text("Total: ${String.format(Locale.US, "%.2f", totalUnits)} unidades", fontWeight = FontWeight.Bold, color = BakeryOrange)
+                            Text("Costo Unitario: ${String.format(Locale.US, "%.4f", unitPrice)} $", fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val nP = numPackages.toDoubleOrNull() ?: 0.0
+                    val uP = unitsPerPackage.toDoubleOrNull() ?: 0.0
+                    val tP = totalPrice.toDoubleOrNull() ?: 0.0
+                    if (nP > 0 && uP > 0 && tP > 0) {
+                        onConfirm(nP * uP, tP)
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = BakeryOrange)
+            ) {
+                Text("Confirmar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar", color = Color.Gray)
+            }
+        }
+    )
 }

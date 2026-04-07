@@ -11,13 +11,26 @@ import kotlinx.coroutines.launch
 
 class RecipesViewModel(private val repository: IngredientRepository) : ViewModel() {
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
     val recipesUiState: StateFlow<RecipesUiState> =
-        repository.getAllRecipesStream().map { RecipesUiState(it) }
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5_000L),
-                initialValue = RecipesUiState()
-            )
+        combine(repository.getAllRecipesStream(), _searchQuery) { recipes, query ->
+            val filteredRecipes = if (query.isEmpty()) {
+                recipes
+            } else {
+                recipes.filter { it.title.contains(query, ignoreCase = true) }
+            }
+            RecipesUiState(filteredRecipes)
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = RecipesUiState()
+        )
+
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
 
     val availableIngredients: StateFlow<List<Ingredient>> =
         repository.getAllIngredientsStream()

@@ -27,7 +27,8 @@ class DebtViewModel(private val repository: IngredientRepository) : ViewModel() 
                 customerName = customers.find { it.id == sale.customerId }?.name ?: "Cliente",
                 concept = sale.recipeTitle,
                 amount = sale.totalAmount,
-                date = sale.date
+                date = sale.date,
+                exchangeRate = sale.exchangeRate
             )
         }
 
@@ -105,7 +106,7 @@ class DebtViewModel(private val repository: IngredientRepository) : ViewModel() 
             repository.insertSaleRecord(
                 SaleRecord(
                     recipeId = -1,
-                    recipeTitle = "$customerName (Abono)",
+                    recipeTitle = "${recipe?.title ?: debt.concept} - $customerName (Abono)",
                     quantity = 0,
                     totalAmount = amountPaid,
                     exchangeRate = rate,
@@ -250,5 +251,6 @@ data class PaymentDetails(
     val customerName: String,
     val concept: String,
     val amount: Double,
-    val date: Long
+    val date: Long,
+    val exchangeRate: Double
 )

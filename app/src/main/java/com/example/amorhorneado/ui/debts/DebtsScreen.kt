@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,36 +55,7 @@ fun DebtsScreen(
     val tabs = listOf("Cuentas", "Clientes", "Top")
 
     Scaffold(
-        topBar = {
-            Column {
-                CenterAlignedTopAppBar(
-                    title = { Text("Clientes y Cuentas", fontWeight = FontWeight.Bold) },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Regresar", tint = BakeryOrange)
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background,
-                        titleContentColor = Color.White
-                    )
-                )
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor = MaterialTheme.colorScheme.background,
-                    contentColor = BakeryOrange,
-                    divider = {}
-                ) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTab == index,
-                            onClick = { selectedTab = index },
-                            text = { Text(title, fontSize = 14.sp, fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal) }
-                        )
-                    }
-                }
-            }
-        },
+        modifier = Modifier.fillMaxSize(),
         floatingActionButton = {
             if (selectedTab == 1) {
                 FloatingActionButton(
@@ -97,11 +69,71 @@ fun DebtsScreen(
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            when (selectedTab) {
-                0 -> DebtsTabsSection(uiState, exchangeRate, viewModel)
-                1 -> CustomersList(uiState.customers, viewModel)
-                2 -> TopCustomers(uiState, exchangeRate)
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            Spacer(modifier = Modifier.height(64.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                Text(
+                    text = "Fiados",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    fontSize = 42.sp
+                )
+                Text(
+                    text = "Gestión de créditos y cobranzas",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = Color.Transparent,
+                contentColor = BakeryOrange,
+                divider = {},
+                indicator = { tabPositions ->
+                    if (selectedTab < tabPositions.size) {
+                        TabRowDefaults.SecondaryIndicator(
+                            Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                            color = BakeryOrange
+                        )
+                    }
+                }
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        text = {
+                            Text(
+                                title,
+                                fontSize = 14.sp,
+                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    )
+                }
+            }
+
+            Box(modifier = Modifier.weight(1f)) {
+                when (selectedTab) {
+                    0 -> DebtsTabsSection(uiState, exchangeRate, viewModel)
+                    1 -> CustomersList(uiState.customers, viewModel)
+                    2 -> TopCustomers(uiState, exchangeRate)
+                }
             }
         }
     }
@@ -164,11 +196,13 @@ fun DebtsTabsSection(uiState: DebtsUiState, exchangeRate: Double, viewModel: Deb
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             placeholder = { Text("Buscar deudor...", color = Color.Gray) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = BakeryOrange) },
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = BakeryOrange,
-                unfocusedBorderColor = Color.Gray,
+                unfocusedBorderColor = Color.DarkGray,
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
                 cursorColor = BakeryOrange
             ),
             singleLine = true
@@ -203,8 +237,8 @@ fun DebtsTabsSection(uiState: DebtsUiState, exchangeRate: Double, viewModel: Deb
 
         when (subTabSelected) {
             0 -> PendingDebtsGroupedList(uiState, exchangeRate, viewModel, searchQuery)
-            1 -> PartialPaymentsList(uiState, exchangeRate, viewModel)
-            2 -> PaidDebtsList(uiState, exchangeRate, viewModel)
+            1 -> PartialPaymentsList(uiState, exchangeRate, viewModel, searchQuery)
+            2 -> PaidDebtsList(uiState, exchangeRate, viewModel, searchQuery)
         }
     }
 }
@@ -386,8 +420,11 @@ fun CustomerDebtsDialog(
 }
 
 @Composable
-fun PartialPaymentsList(uiState: DebtsUiState, exchangeRate: Double, viewModel: DebtViewModel) {
-    val partialPayments = uiState.payments.sortedByDescending { it.date }
+fun PartialPaymentsList(uiState: DebtsUiState, exchangeRate: Double, viewModel: DebtViewModel, searchQuery: String = "") {
+    val partialPayments = uiState.payments
+        .filter { it.customerName.contains(searchQuery, ignoreCase = true) }
+        .sortedByDescending { it.date }
+    var selectedPayment by remember { mutableStateOf<PaymentDetails?>(null) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -396,7 +433,9 @@ fun PartialPaymentsList(uiState: DebtsUiState, exchangeRate: Double, viewModel: 
         if (partialPayments.isNotEmpty()) {
             items(partialPayments) { payment ->
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { selectedPayment = payment },
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(16.dp)
                 ) {
@@ -428,11 +467,58 @@ fun PartialPaymentsList(uiState: DebtsUiState, exchangeRate: Double, viewModel: 
             }
         }
     }
+
+    if (selectedPayment != null) {
+        PaymentDetailsDialog(
+            payment = selectedPayment!!,
+            onDismiss = { selectedPayment = null }
+        )
+    }
 }
 
 @Composable
-fun PaidDebtsList(uiState: DebtsUiState, exchangeRate: Double, viewModel: DebtViewModel) {
-    val paidDebts = uiState.debts.filter { it.debt.isPaid }.sortedByDescending { it.debt.date }
+fun PaymentDetailsDialog(payment: PaymentDetails, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Detalle de Abono", color = Color.White, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color.Gray.copy(alpha = 0.3f))
+                
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Cliente: ${payment.customerName}", color = BakeryOrange, fontWeight = FontWeight.Bold)
+                    Text("Producto: ${payment.concept.substringBefore(" - ")}", color = Color.White)
+                    Text("Fecha: ${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(payment.date))}", color = Color.Gray, fontSize = 14.sp)
+                    Text("Tasa aplicada: ${String.format(Locale.getDefault(), "%.2f", payment.exchangeRate)} Bs/$", color = Color.Gray, fontSize = 14.sp)
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = Color.Gray.copy(alpha = 0.3f))
+
+                Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "$${String.format(Locale.getDefault(), "%.2f", payment.amount)}",
+                        color = BakeryOrange,
+                        fontSize = 36.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    PriceInBs(priceInUsd = payment.amount, exchangeRate = payment.exchangeRate)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cerrar", color = BakeryOrange) }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(24.dp)
+    )
+}
+
+@Composable
+fun PaidDebtsList(uiState: DebtsUiState, exchangeRate: Double, viewModel: DebtViewModel, searchQuery: String = "") {
+    val paidDebts = uiState.debts
+        .filter { it.debt.isPaid && it.customerName.contains(searchQuery, ignoreCase = true) }
+        .sortedByDescending { it.debt.date }
+    var selectedDebt by remember { mutableStateOf<DebtDetails?>(null) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -441,7 +527,9 @@ fun PaidDebtsList(uiState: DebtsUiState, exchangeRate: Double, viewModel: DebtVi
         if (paidDebts.isNotEmpty()) {
             items(paidDebts) { debtDetails ->
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { selectedDebt = debtDetails },
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)),
                     shape = RoundedCornerShape(16.dp)
                 ) {
@@ -492,6 +580,61 @@ fun PaidDebtsList(uiState: DebtsUiState, exchangeRate: Double, viewModel: DebtVi
             }
         }
     }
+
+    if (selectedDebt != null) {
+        PaidDebtDetailsDialog(
+            debtDetails = selectedDebt!!,
+            onDismiss = { selectedDebt = null }
+        )
+    }
+}
+
+@Composable
+fun PaidDebtDetailsDialog(debtDetails: DebtDetails, onDismiss: () -> Unit) {
+    val debt = debtDetails.debt
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Detalle de Deuda Pagada", color = Color.White, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color.Gray.copy(alpha = 0.3f))
+                
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Cliente: ${debtDetails.customerName}", color = BakeryOrange, fontWeight = FontWeight.Bold)
+                    Text("Producto: ${debt.concept}", color = Color.White)
+                    
+                    Box(
+                        modifier = Modifier
+                            .border(1.dp, Color(0xFF4CAF50), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text("PAGADO", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+
+                    Text("Fecha: ${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(debt.date))}", color = Color.Gray, fontSize = 14.sp)
+                    if (debtDetails.recipe != null) {
+                        Text("Receta: ${debtDetails.recipe.title}", color = Color.Gray, fontSize = 14.sp)
+                    }
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = Color.Gray.copy(alpha = 0.3f))
+
+                Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "$${String.format(Locale.getDefault(), "%.2f", debt.amount)}",
+                        color = BakeryOrange,
+                        fontSize = 36.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cerrar", color = BakeryOrange) }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(24.dp)
+    )
 }
 
 @Composable
@@ -522,11 +665,13 @@ fun CustomersList(customers: List<Customer>, viewModel: DebtViewModel) {
                 .fillMaxWidth()
                 .padding(16.dp),
             placeholder = { Text("Buscar cliente...", color = Color.Gray) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = BakeryOrange) },
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = BakeryOrange,
-                unfocusedBorderColor = Color.Gray,
+                unfocusedBorderColor = Color.DarkGray,
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
                 cursorColor = BakeryOrange
             ),
             singleLine = true
@@ -920,20 +1065,27 @@ fun AddPaymentDialog(
                     onValueChange = { amount = it },
                     label = { Text("Monto del Pago ($)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        TextButton(
+                            onClick = { amount = String.format(Locale.getDefault(), "%.2f", debt.debt.remainingAmount) }
+                        ) {
+                            Text("TODO", color = BakeryOrange, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 )
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text("Cancelar") }
                     Button(
                         onClick = {
-                            val amt = amount.toDoubleOrNull()
+                            val amt = amount.replace(",", ".").toDoubleOrNull()
                             if (amt != null && amt > 0) {
                                 onConfirm(amt)
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = BakeryOrange),
-                        enabled = amount.toDoubleOrNull() != null && amount.toDouble().let { it > 0 && it <= debt.debt.remainingAmount }
+                        enabled = amount.replace(",", ".").toDoubleOrNull() != null && amount.replace(",", ".").toDouble().let { it > 0 && it <= debt.debt.remainingAmount + 0.01 }
                     ) {
                         Text("Registrar")
                     }

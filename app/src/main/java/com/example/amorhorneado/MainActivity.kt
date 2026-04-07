@@ -4,7 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -96,15 +98,16 @@ fun MainApp() {
 
     Scaffold(
         bottomBar = {
-            if (currentRoute !in listOf("add_ingredient", "add_recipe", "settings", "debts", "raffle", "sales_summary/{isMonthly}")) {
+            val showBottomBar = currentRoute in listOf("dashboard", "ingredients", "recipes", "production", "settings")
+            if (showBottomBar) {
                 val backgroundColor = Color(0xFF2D2013)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(75.dp),
+                        .height(80.dp),
                     contentAlignment = Alignment.BottomCenter
                 ) {
-                    val barHeight = 52.dp
+                    val barHeight = 62.dp
                     // Fondo personalizado con el hueco (Corte circular)
                     Canvas(modifier = Modifier.fillMaxWidth().height(barHeight)) {
                         val width = size.width
@@ -155,41 +158,64 @@ fun MainApp() {
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(barHeight)
-                            .padding(horizontal = 8.dp),
+                            .padding(horizontal = 8.dp)
+                            .padding(bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Dashboard
                         Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                            IconButton(onClick = {
-                                navController.navigate("dashboard") {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                IconButton(
+                                    onClick = {
+                                        navController.navigate("dashboard") {
+                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    modifier = Modifier.size(38.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Dashboard,
+                                        contentDescription = null,
+                                        tint = if (currentRoute == "dashboard") BakeryOrange else Color.Gray,
+                                        modifier = Modifier.size(24.dp)
+                                    )
                                 }
-                            }) {
-                                Icon(
-                                    Icons.Default.Dashboard, 
-                                    contentDescription = null,
-                                    tint = if (currentRoute == "dashboard") BakeryOrange else Color.Gray,
-                                    modifier = Modifier.size(26.dp)
+                                Text(
+                                    text = "Inicio",
+                                    color = if (currentRoute == "dashboard") BakeryOrange else Color.Gray,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
                         }
                         
                         // Insumos
                         Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                            IconButton(onClick = {
-                                navController.navigate("ingredients") {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                IconButton(
+                                    onClick = {
+                                        navController.navigate("ingredients") {
+                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    modifier = Modifier.size(38.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Inventory,
+                                        contentDescription = null,
+                                        tint = if (currentRoute == "ingredients") BakeryOrange else Color.Gray,
+                                        modifier = Modifier.size(24.dp)
+                                    )
                                 }
-                            }) {
-                                Icon(
-                                    Icons.Default.Inventory, 
-                                    contentDescription = null,
-                                    tint = if (currentRoute == "ingredients") BakeryOrange else Color.Gray,
-                                    modifier = Modifier.size(26.dp)
+                                Text(
+                                    text = "Insumos",
+                                    color = if (currentRoute == "ingredients") BakeryOrange else Color.Gray,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
                         }
@@ -199,36 +225,58 @@ fun MainApp() {
 
                         // Recetas
                         Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                            IconButton(onClick = {
-                                navController.navigate("recipes") {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                IconButton(
+                                    onClick = {
+                                        navController.navigate("recipes") {
+                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    modifier = Modifier.size(38.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Cake,
+                                        contentDescription = null,
+                                        tint = if (currentRoute == "recipes") BakeryOrange else Color.Gray,
+                                        modifier = Modifier.size(24.dp)
+                                    )
                                 }
-                            }) {
-                                Icon(
-                                    Icons.Default.Cake, 
-                                    contentDescription = null,
-                                    tint = if (currentRoute == "recipes") BakeryOrange else Color.Gray,
-                                    modifier = Modifier.size(26.dp)
+                                Text(
+                                    text = "Recetas",
+                                    color = if (currentRoute == "recipes") BakeryOrange else Color.Gray,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
                         }
 
                         // Costos
                         Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                            IconButton(onClick = {
-                                navController.navigate("settings") {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                IconButton(
+                                    onClick = {
+                                        navController.navigate("settings") {
+                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    modifier = Modifier.size(38.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Settings,
+                                        contentDescription = null,
+                                        tint = if (currentRoute == "settings") BakeryOrange else Color.Gray,
+                                        modifier = Modifier.size(24.dp)
+                                    )
                                 }
-                            }) {
-                                Icon(
-                                    Icons.Default.Settings,
-                                    contentDescription = null,
-                                    tint = if (currentRoute == "settings") BakeryOrange else Color.Gray,
-                                    modifier = Modifier.size(26.dp)
+                                Text(
+                                    text = "Costos",
+                                    color = if (currentRoute == "settings") BakeryOrange else Color.Gray,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
                         }
@@ -291,7 +339,7 @@ fun MainApp() {
                     onManageInventory = { navController.navigate("ingredients") },
                     onEditIngredient = { id -> navController.navigate("edit_ingredient/$id") },
                     onViewRecipeDetails = { id -> navController.navigate("recipe_details/$id") },
-                    onManageRecipes = { id -> navController.navigate("recipes") },
+                    onManageRecipes = { id -> navController.navigate("edit_recipe/$id") },
                     onUpdateExchangeRate = { showRateDialog = true },
                     onFiadosClick = { navController.navigate("debts") },
                     onViewSalesSummary = { isMonthly -> 
@@ -408,7 +456,6 @@ fun MainApp() {
             composable("production") {
                 ProductionScreen(
                     viewModel = productionViewModel,
-                    exchangeRate = exchangeRate,
                     onRecordClick = { id -> navController.navigate("recipe_details/$id") }
                 )
             }

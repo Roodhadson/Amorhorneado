@@ -7,21 +7,41 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.amorhorneado.data.Ingredient
 import com.example.amorhorneado.data.IngredientRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class IngredientsViewModel(private val repository: IngredientRepository) : ViewModel() {
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
     val uiState: StateFlow<IngredientsUiState> =
-        repository.getAllIngredientsStream().map { IngredientsUiState(it) }
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5_000L),
-                initialValue = IngredientsUiState()
+        combine(
+            repository.getAllIngredientsStream(),
+            _searchQuery
+        ) { ingredients, query ->
+            IngredientsUiState(
+                ingredientList = if (query.isEmpty()) {
+                    ingredients
+                } else {
+                    ingredients.filter { it.name.contains(query, ignoreCase = true) }
+                }
             )
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = IngredientsUiState()
+        )
 
     var ingredientUiState by mutableStateOf(IngredientUiState())
         private set

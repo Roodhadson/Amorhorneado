@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
@@ -112,7 +113,11 @@ fun RecipeItem(
             )
 
             IconButton(onClick = onAddToProduction) {
-                Icon(Icons.Default.AddShoppingCart, contentDescription = "Producción", tint = BakeryOrange)
+                Icon(
+                    imageVector = Icons.Default.AddCircleOutline,
+                    contentDescription = "Añadir a Producción",
+                    tint = BakeryOrange
+                )
             }
 
             Box {

@@ -7,21 +7,42 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.amorhorneado.data.Ingredient
 import com.example.amorhorneado.ui.theme.BakeryOrange
 import com.example.amorhorneado.ui.theme.CriticalRed
 import java.util.Locale
+
+@Composable
+fun getIngredientIcon(name: String): androidx.compose.ui.graphics.vector.ImageVector {
+    val lowerName = name.lowercase()
+    return when {
+        lowerName.contains("huevo") -> Icons.Default.Egg
+        lowerName.contains("leche") -> Icons.Default.LocalDrink
+        lowerName.contains("harina") -> Icons.Default.BakeryDining
+        lowerName.contains("mantequilla") || lowerName.contains("marga") -> Icons.Default.Kitchen
+        lowerName.contains("azucar") -> Icons.Default.RiceBowl
+        lowerName.contains("levadura") -> Icons.Default.Science
+        lowerName.contains("aceite") -> Icons.Default.Opacity
+        lowerName.contains("sal") -> Icons.Default.Grain
+        lowerName.contains("chocolate") || lowerName.contains("cacao") -> Icons.Default.Icecream
+        lowerName.contains("queso") -> Icons.Default.BakeryDining 
+        lowerName.contains("vainilla") || lowerName.contains("esencia") -> Icons.Default.Colorize
+        lowerName.contains("fruta") || lowerName.contains("fresa") -> Icons.Default.ShoppingBasket
+        else -> Icons.Default.Inventory2
+    }
+}
 
 @Composable
 fun IngredientsScreen(
@@ -30,32 +51,74 @@ fun IngredientsScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
 
-    Surface(
-        color = MaterialTheme.colorScheme.background,
+    Scaffold(
         modifier = modifier.fillMaxSize()
-    ) {
+    ) { innerPadding ->
         Column(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(innerPadding)
                 .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
         ) {
-            Text(
-                text = "Gestión de Insumos",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color.White
+            Spacer(modifier = Modifier.height(64.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                Text(
+                    text = "Insumos",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    fontSize = 42.sp
+                )
+                Text(
+                    text = "${uiState.ingredientList.size} materiales en inventario",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { viewModel.updateSearchQuery(it) },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                placeholder = { Text("Buscar ingredientes...", color = Color.Gray) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = BakeryOrange
+                    )
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = BakeryOrange,
+                    unfocusedBorderColor = Color.DarkGray,
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White
+                ),
+                singleLine = true
             )
-            Text(
-                text = "${uiState.ingredientList.size} materiales en inventario",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
-            )
+
+            Spacer(modifier = Modifier.height(16.dp))
             
-            Spacer(modifier = Modifier.height(20.dp))
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                thickness = 0.5.dp,
+                color = Color.DarkGray
+            )
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(uiState.ingredientList) { ingredient ->
@@ -64,7 +127,6 @@ fun IngredientsScreen(
                         onClick = { onEditIngredient(ingredient.id) }
                     )
                 }
-                item { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }
     }
@@ -76,7 +138,7 @@ fun IngredientItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isLowStock = ingredient.stock <= 2 // Threshold for warning
+    val isLowStock = ingredient.stock <= ingredient.minStock
 
     Card(
         modifier = modifier
@@ -99,12 +161,21 @@ fun IngredientItem(
                     .background(if (isLowStock) CriticalRed.copy(alpha = 0.1f) else BakeryOrange.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = if (isLowStock) Icons.Default.Warning else Icons.Default.Inventory2,
-                    contentDescription = null,
-                    tint = if (isLowStock) CriticalRed else BakeryOrange,
-                    modifier = Modifier.size(24.dp)
-                )
+                if (!ingredient.imagePath.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = ingredient.imagePath,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = if (isLowStock) Icons.Default.Warning else getIngredientIcon(ingredient.name),
+                        contentDescription = null,
+                        tint = if (isLowStock) CriticalRed else BakeryOrange,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -116,8 +187,9 @@ fun IngredientItem(
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
+                val unitPart = ingredient.unit.split(" ").lastOrNull()?.replace("(", "")?.replace(")", "") ?: ""
                 Text(
-                    text = "Costo Unitario: $${String.format(Locale.getDefault(), "%.2f", ingredient.costPrice)}",
+                    text = "Costo: $${String.format(Locale.getDefault(), "%.2f", ingredient.costPrice)} / $unitPart",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
@@ -125,13 +197,14 @@ fun IngredientItem(
 
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "${ingredient.stock}",
+                    text = String.format(Locale.getDefault(), "%.2f", ingredient.stock),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color = if (isLowStock) CriticalRed else BakeryOrange
                 )
+                val unitLabel = ingredient.unit.split(" ").lastOrNull()?.replace("(", "")?.replace(")", "")?.uppercase() ?: ""
                 Text(
-                    text = ingredient.unit.split(" ").last().uppercase(),
+                    text = unitLabel,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = if (isLowStock) CriticalRed.copy(alpha = 0.7f) else Color.Gray,

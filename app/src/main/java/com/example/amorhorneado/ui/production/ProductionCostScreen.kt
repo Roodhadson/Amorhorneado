@@ -1,5 +1,6 @@
 package com.example.amorhorneado.ui.production
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -26,7 +27,6 @@ import com.example.amorhorneado.ui.theme.BakeryOrange
 import com.example.amorhorneado.ui.theme.CriticalRed
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductionCostScreen(
     viewModel: ProductionCostViewModel,
@@ -34,18 +34,24 @@ fun ProductionCostScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    var isFormVisible by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Gastos y Mano de Obra", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = Color.White
+        modifier = modifier.fillMaxSize(),
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { isFormVisible = !isFormVisible },
+                containerColor = BakeryOrange,
+                contentColor = Color.White,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(
+                    if (isFormVisible) Icons.Default.KeyboardArrowUp else Icons.Default.Add,
+                    contentDescription = null
                 )
-            )
-        },
-        modifier = modifier.fillMaxSize()
+            }
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -53,22 +59,81 @@ fun ProductionCostScreen(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            CostInputForm(
-                costDetails = viewModel.costUiState.costDetails,
-                onValueChange = viewModel::updateUiState,
-                onSaveClick = viewModel::saveCost
+            Spacer(modifier = Modifier.height(64.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                Text(
+                    text = "Costos",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    fontSize = 42.sp
+                )
+                Text(
+                    text = "${uiState.costList.size} conceptos registrados",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { viewModel.updateSearchQuery(it) },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                placeholder = { Text("Buscar conceptos...", color = Color.Gray) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = BakeryOrange
+                    )
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = BakeryOrange,
+                    unfocusedBorderColor = Color.DarkGray,
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White
+                ),
+                singleLine = true
             )
-            
-            Text(
-                text = "CONCEPTOS REGISTRADOS",
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.Gray,
-                fontWeight = FontWeight.Bold
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            AnimatedVisibility(
+                visible = isFormVisible || viewModel.costUiState.costDetails.id != 0,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+                modifier = Modifier.padding(horizontal = 16.dp)
+            ) {
+                Column {
+                    CostInputForm(
+                        costDetails = viewModel.costUiState.costDetails,
+                        onValueChange = viewModel::updateUiState,
+                        onSaveClick = {
+                            viewModel.saveCost()
+                            isFormVisible = false
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                thickness = 0.5.dp,
+                color = Color.DarkGray
             )
-            
+
             CostList(
-                costList = uiState.costList, 
+                costList = uiState.costList,
                 exchangeRate = exchangeRate,
                 onEdit = { viewModel.loadCost(it) },
                 onDelete = { viewModel.deleteCost(it) }
@@ -84,10 +149,10 @@ fun CostInputForm(
     onSaveClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val suggestions = listOf("Mano de obra", "Gas", "Electricidad", "Agua", "Transporte", "Alquiler")
+    val suggestions = listOf("Gas", "Mano de obra", "Electricidad", "Agua", "Alquiler", "Transporte")
 
     Card(
-        modifier = modifier.padding(16.dp),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -110,7 +175,7 @@ fun CostInputForm(
                     }
                 }
             }
-            
+
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = costDetails.concept,
@@ -139,7 +204,7 @@ fun CostInputForm(
                     }
                 }
             }
-            
+
             OutlinedTextField(
                 value = costDetails.amount,
                 onValueChange = { onValueChange(costDetails.copy(amount = it)) },
@@ -154,7 +219,7 @@ fun CostInputForm(
                     focusedBorderColor = BakeryOrange
                 )
             )
-            
+
             Button(
                 onClick = onSaveClick,
                 modifier = Modifier.fillMaxWidth().height(48.dp),

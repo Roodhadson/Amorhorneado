@@ -10,18 +10,29 @@ import java.util.TimeZone
 
 class ProductionViewModel(private val repository: IngredientRepository) : ViewModel() {
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
     val productionRecords: StateFlow<List<ProductionRecordWithRecipe>> = 
         combine(
             repository.getAllProductionRecordsStream(),
-            repository.getAllRecipesStream()
-        ) { records, recipes ->
+            repository.getAllRecipesStream(),
+            _searchQuery
+        ) { records, recipes, query ->
             records.filter { it.quantity > 0 || it.portionQuantity > 0 }.map { record ->
                 ProductionRecordWithRecipe(
                     record = record,
                     recipe = recipes.find { it.id == record.recipeId }
                 )
+            }.filter { 
+                if (query.isEmpty()) true 
+                else it.recipe?.title?.contains(query, ignoreCase = true) == true
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), emptyList())
+
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
 
     private val _salesFilter = MutableStateFlow("Hoy")
     val salesFilter: StateFlow<String> = _salesFilter.asStateFlow()
@@ -77,6 +88,14 @@ class ProductionViewModel(private val repository: IngredientRepository) : ViewMo
         _customDate.value = dateMillis
         _salesFilter.value = "Personalizado"
     }
+
+    val exchangeRate: StateFlow<Double> = repository.getUserConfigStream()
+        .map { it?.lastExchangeRate ?: 0.0 }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0.0)
+
+    val totalPeriodSales: StateFlow<Double> = salesRecords
+        .map { it.sumOf { sale -> sale.totalAmount } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), 0.0)
 
     fun addToProduction(recipeId: Int, quantity: Int = 1) {
         viewModelScope.launch {
@@ -224,9 +243,85 @@ class ProductionViewModel(private val repository: IngredientRepository) : ViewMo
             }
         }
     }
+
+    fun checkout(
+        items: List<CartItem>,
+        paymentMethod: String,
+        customerId: Int? = null
+    ) {
+        viewModelScope.launch {
+            val userConfig = repository.getUserConfigStream().firstOrNull()
+            val rate = userConfig?.lastExchangeRate ?: 0.0
+            val isCredit = paymentMethod == "Crédito (Fiado)"
+
+            items.forEach { cartItem ->
+                // 1. Get current production record
+                val records = repository.getAllProductionRecordsStream().first()
+                val record = records.find { it.recipeId == cartItem.recipeId } ?: return@forEach
+
+                // 2. Deduct stock
+                if (cartItem.isPortion) {
+                    if (record.portionQuantity >= cartItem.quantity) {
+                        repository.updateProductionRecord(record.copy(portionQuantity = record.portionQuantity - cartItem.quantity))
+                    } else {
+                        return@forEach // Not enough stock
+                    }
+                } else {
+                    if (record.quantity >= cartItem.quantity) {
+                        repository.updateProductionRecord(record.copy(quantity = record.quantity - cartItem.quantity))
+                    } else {
+                        return@forEach // Not enough stock
+                    }
+                }
+
+                // 3. Create Sale Record
+                val totalPrice = cartItem.price * cartItem.quantity
+                val titleSuffix = if (cartItem.isPortion) " (Porción)" else ""
+                val creditSuffix = if (isCredit) " - Crédito" else ""
+                
+                repository.insertSaleRecord(
+                    SaleRecord(
+                        recipeId = cartItem.recipeId,
+                        recipeTitle = "${cartItem.title}$titleSuffix$creditSuffix",
+                        quantity = if (isCredit) 0 else cartItem.quantity,
+                        totalAmount = if (isCredit) 0.0 else totalPrice,
+                        exchangeRate = rate,
+                        totalAmountBs = if (isCredit) 0.0 else (totalPrice * rate),
+                        paymentMethod = paymentMethod,
+                        imagePath = cartItem.imagePath,
+                        customerId = customerId
+                    )
+                )
+
+                // 4. Handle Debt if Credit
+                if (isCredit && customerId != null) {
+                    repository.insertDebt(
+                        Debt(
+                            customerId = customerId,
+                            amount = totalPrice,
+                            remainingAmount = totalPrice,
+                            concept = "Compra Carrito: ${cartItem.quantity} ${cartItem.title}$titleSuffix",
+                            date = System.currentTimeMillis(),
+                            isPaid = false,
+                            recipeId = cartItem.recipeId
+                        )
+                    )
+                }
+            }
+        }
+    }
 }
 
 data class ProductionRecordWithRecipe(
     val record: ProductionRecord,
     val recipe: Recipe?
+)
+
+data class CartItem(
+    val recipeId: Int,
+    val title: String,
+    val price: Double,
+    val quantity: Int,
+    val isPortion: Boolean,
+    val imagePath: String? = null
 )

@@ -54,4 +54,4 @@ La aplicación utiliza una paleta de colores inspirada en los elementos de la pa
 4. Ejecuta la app en un emulador o dispositivo físico.
 
 ---
-*Desarrollado para Amor Horneado - Excelencia en cada miga.*
+*Desarrollado para Amor Horneado - Excelencia en cada miga.*# Amorhorneado

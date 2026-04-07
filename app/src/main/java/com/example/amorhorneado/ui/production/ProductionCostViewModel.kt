@@ -7,21 +7,31 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.amorhorneado.data.IngredientRepository
 import com.example.amorhorneado.data.ProductionCost
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class ProductionCostViewModel(private val repository: IngredientRepository) : ViewModel() {
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
     val uiState: StateFlow<ProductionUiState> =
-        repository.getAllProductionCostsStream().map { ProductionUiState(it) }
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5_000L),
-                initialValue = ProductionUiState()
-            )
+        combine(repository.getAllProductionCostsStream(), _searchQuery) { costs, query ->
+            val filteredCosts = if (query.isEmpty()) {
+                costs
+            } else {
+                costs.filter { it.concept.contains(query, ignoreCase = true) }
+            }
+            ProductionUiState(filteredCosts)
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000L),
+            initialValue = ProductionUiState()
+        )
+
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
 
     var costUiState by mutableStateOf(CostUiState())
         private set
